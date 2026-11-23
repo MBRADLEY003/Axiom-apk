@@ -1,0 +1,6 @@
+{
+  "name": "AXIOM",
+  "description": "Intelligent Fleet & Logistics Intelligence Platform with statistical fuel anomaly detection, GPS route analytics, and Ottilia AI assistant.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

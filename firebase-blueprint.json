@@ -1,0 +1,346 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Authenticated AXIOM operator profile, active company selection, and RBAC role state.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Firebase Auth UID" },
+        "displayName": { "type": "string", "description": "Operator display name" },
+        "email": { "type": "string", "description": "Verified account email" },
+        "activeCompanyId": { "type": "string", "description": "Currently selected company ID" },
+        "activeRole": { "type": "string", "enum": ["SUPER_ADMIN", "FLEET_MANAGER", "OPERATIONS_MANAGER", "FINANCE_MANAGER", "DATA_ANALYST", "DRIVER", "AUDITOR"] },
+        "pinHash": { "type": "string", "description": "Optional SHA-256 salted app-lock PIN hash" },
+        "sessionTimeoutMinutes": { "type": "integer", "description": "Session lock timeout in minutes" },
+        "emailAlertsEnabled": { "type": "boolean" },
+        "smsAlertsEnabled": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp" }
+      },
+      "required": ["userId", "displayName", "email", "activeCompanyId", "activeRole", "sessionTimeoutMinutes", "emailAlertsEnabled", "smsAlertsEnabled", "createdAt", "updatedAt"]
+    },
+    "Company": {
+      "title": "Company",
+      "description": "Fleet & logistics organization tenant for multi-company isolation.",
+      "type": "object",
+      "properties": {
+        "companyId": { "type": "string" },
+        "name": { "type": "string" },
+        "industry": { "type": "string" },
+        "currency": { "type": "string" },
+        "demoData": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["companyId", "name", "industry", "currency", "demoData", "createdAt", "updatedAt"]
+    },
+    "TeamMember": {
+      "title": "TeamMember",
+      "description": "Company team member and assigned RBAC role.",
+      "type": "object",
+      "properties": {
+        "companyId": { "type": "string" },
+        "fullName": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["SUPER_ADMIN", "FLEET_MANAGER", "OPERATIONS_MANAGER", "FINANCE_MANAGER", "DATA_ANALYST", "DRIVER", "AUDITOR"] },
+        "department": { "type": "string" },
+        "activeStatus": { "type": "string", "enum": ["ACTIVE", "SUSPENDED"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["companyId", "fullName", "email", "role", "department", "activeStatus", "createdAt", "updatedAt"]
+    },
+    "Vehicle": {
+      "title": "Vehicle",
+      "description": "Fleet vehicle asset with registration, VIN, fuel baseline, and expiry metadata.",
+      "type": "object",
+      "properties": {
+        "companyId": { "type": "string" },
+        "registrationNumber": { "type": "string" },
+        "vin": { "type": "string" },
+        "makeModel": { "type": "string" },
+        "category": { "type": "string", "enum": ["HEAVY_TRUCK", "LIGHT_VAN", "REFRIGERATED", "TANKER", "FLATBED", "UTILITY"] },
+        "assignedDriverId": { "type": "string" },
+        "assignedDriverName": { "type": "string" },
+        "fuelType": { "type": "string", "enum": ["DIESEL", "PETROL", "HYBRID", "ELECTRIC"] },
+        "tankCapacityLiters": { "type": "number" },
+        "currentMileageKm": { "type": "number" },
+        "status": { "type": "string", "enum": ["ACTIVE", "INACTIVE", "MAINTENANCE"] },
+        "purchaseDate": { "type": "string" },
+        "insuranceExpiry": { "type": "string" },
+        "licenseExpiry": { "type": "string" },
+        "baselineKmPerLiter": { "type": "number" },
+        "operationalCostTotal": { "type": "number" },
+        "demoData": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["companyId", "registrationNumber", "vin", "makeModel", "category", "assignedDriverId", "assignedDriverName", "fuelType", "tankCapacityLiters", "currentMileageKm", "status", "purchaseDate", "insuranceExpiry", "licenseExpiry", "baselineKmPerLiter", "operationalCostTotal", "demoData", "createdAt", "updatedAt"]
+    },
+    "Driver": {
+      "title": "Driver",
+      "description": "Driver profile and operational performance indicators.",
+      "type": "object",
+      "properties": {
+        "companyId": { "type": "string" },
+        "driverCode": { "type": "string" },
+        "fullName": { "type": "string" },
+        "licenseNumber": { "type": "string" },
+        "assignedVehicleId": { "type": "string" },
+        "assignedVehicleReg": { "type": "string" },
+        "distanceTravelledKm": { "type": "number" },
+        "fuelUsedLiters": { "type": "number" },
+        "drivingHours": { "type": "number" },
+        "maintenanceIncidents": { "type": "integer" },
+        "safetyEvents": { "type": "integer" },
+        "onTimeDeliveryPct": { "type": "number" },
+        "status": { "type": "string", "enum": ["ON_DUTY", "OFF_DUTY", "SUSPENDED"] },
+        "demoData": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["companyId", "driverCode", "fullName", "licenseNumber", "assignedVehicleId", "assignedVehicleReg", "distanceTravelledKm", "fuelUsedLiters", "drivingHours", "maintenanceIncidents", "safetyEvents", "onTimeDeliveryPct", "status", "demoData", "createdAt", "updatedAt"]
+    },
+    "FuelTransaction": {
+      "title": "FuelTransaction",
+      "description": "Fuel purchase, issue, and odometer log for Z-score and CUSUM anomaly detection.",
+      "type": "object",
+      "properties": {
+        "companyId": { "type": "string" },
+        "vehicleId": { "type": "string" },
+        "vehicleReg": { "type": "string" },
+        "driverId": { "type": "string" },
+        "driverName": { "type": "string" },
+        "routeName": { "type": "string" },
+        "liters": { "type": "number" },
+        "costAmount": { "type": "number" },
+        "odometerKm": { "type": "number" },
+        "distanceSinceLastKm": { "type": "number" },
+        "fuelType": { "type": "string", "enum": ["DIESEL", "PETROL", "HYBRID", "ELECTRIC"] },
+        "stationName": { "type": "string" },
+        "transactionRef": { "type": "string" },
+        "txDateLabel": { "type": "string" },
+        "txTimestampMillis": { "type": "integer" },
+        "demoData": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["companyId", "vehicleId", "vehicleReg", "driverId", "driverName", "routeName", "liters", "costAmount", "odometerKm", "distanceSinceLastKm", "fuelType", "stationName", "transactionRef", "txDateLabel", "txTimestampMillis", "demoData", "createdAt", "updatedAt"]
+    },
+    "TripRecord": {
+      "title": "TripRecord",
+      "description": "GPS route history, stops, idle time, and deviation telemetry.",
+      "type": "object",
+      "properties": {
+        "companyId": { "type": "string" },
+        "vehicleId": { "type": "string" },
+        "vehicleReg": { "type": "string" },
+        "driverId": { "type": "string" },
+        "driverName": { "type": "string" },
+        "routeName": { "type": "string" },
+        "originName": { "type": "string" },
+        "destinationName": { "type": "string" },
+        "plannedDistanceKm": { "type": "number" },
+        "actualDistanceKm": { "type": "number" },
+        "durationMinutes": { "type": "integer" },
+        "idleMinutes": { "type": "integer" },
+        "stopCount": { "type": "integer" },
+        "routeDeviationKm": { "type": "number" },
+        "geofenceBreached": { "type": "boolean" },
+        "simulatedTelemetry": { "type": "boolean" },
+        "startLat": { "type": "number" },
+        "startLng": { "type": "number" },
+        "endLat": { "type": "number" },
+        "endLng": { "type": "number" },
+        "status": { "type": "string", "enum": ["SCHEDULED", "IN_PROGRESS", "COMPLETED", "DEVIATED"] },
+        "startedAtMillis": { "type": "integer" },
+        "demoData": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["companyId", "vehicleId", "vehicleReg", "driverId", "driverName", "routeName", "originName", "destinationName", "plannedDistanceKm", "actualDistanceKm", "durationMinutes", "idleMinutes", "stopCount", "routeDeviationKm", "geofenceBreached", "simulatedTelemetry", "startLat", "startLng", "endLat", "endLng", "status", "startedAtMillis", "demoData", "createdAt", "updatedAt"]
+    },
+    "MaintenanceRecord": {
+      "title": "MaintenanceRecord",
+      "description": "Preventive, corrective, and breakdown maintenance log.",
+      "type": "object",
+      "properties": {
+        "companyId": { "type": "string" },
+        "vehicleId": { "type": "string" },
+        "vehicleReg": { "type": "string" },
+        "maintenanceType": { "type": "string", "enum": ["PREVENTIVE", "CORRECTIVE", "BREAKDOWN"] },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "serviceDate": { "type": "string" },
+        "mileageAtServiceKm": { "type": "number" },
+        "nextDueMileageKm": { "type": "number" },
+        "costAmount": { "type": "number" },
+        "spareParts": { "type": "string" },
+        "downtimeHours": { "type": "number" },
+        "status": { "type": "string", "enum": ["SCHEDULED", "IN_PROGRESS", "COMPLETED", "OVERDUE"] },
+        "demoData": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["companyId", "vehicleId", "vehicleReg", "maintenanceType", "title", "description", "serviceDate", "mileageAtServiceKm", "nextDueMileageKm", "costAmount", "spareParts", "downtimeHours", "status", "demoData", "createdAt", "updatedAt"]
+    },
+    "ExpenseRecord": {
+      "title": "ExpenseRecord",
+      "description": "Financial expenditure and budget allocation record.",
+      "type": "object",
+      "properties": {
+        "companyId": { "type": "string" },
+        "vehicleId": { "type": "string" },
+        "vehicleReg": { "type": "string" },
+        "driverId": { "type": "string" },
+        "category": { "type": "string", "enum": ["FUEL", "MAINTENANCE", "DRIVER", "INSURANCE", "LICENSING", "OPERATIONAL"] },
+        "amount": { "type": "number" },
+        "budgetAllocated": { "type": "number" },
+        "description": { "type": "string" },
+        "monthKey": { "type": "string" },
+        "demoData": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["companyId", "vehicleId", "vehicleReg", "driverId", "category", "amount", "budgetAllocated", "description", "monthKey", "demoData", "createdAt", "updatedAt"]
+    },
+    "ShipmentRecord": {
+      "title": "ShipmentRecord",
+      "description": "Logistics cargo, customer, dispatch, and delivery lifecycle record.",
+      "type": "object",
+      "properties": {
+        "companyId": { "type": "string" },
+        "trackingCode": { "type": "string" },
+        "customerName": { "type": "string" },
+        "customerContact": { "type": "string" },
+        "cargoDescription": { "type": "string" },
+        "weightKg": { "type": "number" },
+        "capacityKg": { "type": "number" },
+        "pickupLocation": { "type": "string" },
+        "deliveryLocation": { "type": "string" },
+        "vehicleId": { "type": "string" },
+        "vehicleReg": { "type": "string" },
+        "driverId": { "type": "string" },
+        "driverName": { "type": "string" },
+        "revenueAmount": { "type": "number" },
+        "tripCostEstimate": { "type": "number" },
+        "status": { "type": "string", "enum": ["REGISTERED", "DISPATCHED", "IN_TRANSIT", "DELIVERED", "DELAYED"] },
+        "scheduledDate": { "type": "string" },
+        "demoData": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["companyId", "trackingCode", "customerName", "customerContact", "cargoDescription", "weightKg", "capacityKg", "pickupLocation", "deliveryLocation", "vehicleId", "vehicleReg", "driverId", "driverName", "revenueAmount", "tripCostEstimate", "status", "scheduledDate", "demoData", "createdAt", "updatedAt"]
+    },
+    "RiskAlertRecord": {
+      "title": "RiskAlertRecord",
+      "description": "Operational risk investigation signal with supporting evidence and resolution status.",
+      "type": "object",
+      "properties": {
+        "companyId": { "type": "string" },
+        "category": { "type": "string" },
+        "severity": { "type": "string", "enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"] },
+        "entityType": { "type": "string", "enum": ["VEHICLE", "DRIVER", "FUEL", "ROUTE", "FINANCE", "LOGISTICS"] },
+        "entityId": { "type": "string" },
+        "entityLabel": { "type": "string" },
+        "supportingData": { "type": "string" },
+        "detectionMethod": { "type": "string" },
+        "historicalComparison": { "type": "string" },
+        "recommendedInvestigation": { "type": "string" },
+        "confidenceScore": { "type": "number" },
+        "resolutionStatus": { "type": "string", "enum": ["OPEN", "INVESTIGATING", "RESOLVED", "DISMISSED"] },
+        "resolutionNotes": { "type": "string" },
+        "demoData": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["companyId", "category", "severity", "entityType", "entityId", "entityLabel", "supportingData", "detectionMethod", "historicalComparison", "recommendedInvestigation", "confidenceScore", "resolutionStatus", "resolutionNotes", "demoData", "createdAt", "updatedAt"]
+    },
+    "NotificationRecord": {
+      "title": "NotificationRecord",
+      "description": "In-app operational notification with channel readiness metadata.",
+      "type": "object",
+      "properties": {
+        "companyId": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "category": { "type": "string" },
+        "severity": { "type": "string", "enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"] },
+        "readStatus": { "type": "boolean" },
+        "channel": { "type": "string", "enum": ["IN_APP", "EMAIL_READY", "SMS_READY"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["companyId", "title", "message", "category", "severity", "readStatus", "channel", "createdAt", "updatedAt"]
+    },
+    "AuditLogRecord": {
+      "title": "AuditLogRecord",
+      "description": "Immutable user activity and security audit trail.",
+      "type": "object",
+      "properties": {
+        "companyId": { "type": "string" },
+        "actorEmail": { "type": "string" },
+        "actorRole": { "type": "string" },
+        "action": { "type": "string" },
+        "targetEntity": { "type": "string" },
+        "details": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["companyId", "actorEmail", "actorRole", "action", "targetEntity", "details", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Authenticated user profile and active workspace state"
+    },
+    "/users/{userId}/companies/{companyId}": {
+      "schema": { "$ref": "#/entities/Company" },
+      "description": "Multi-company organizations owned by user"
+    },
+    "/users/{userId}/teamMembers/{memberId}": {
+      "schema": { "$ref": "#/entities/TeamMember" },
+      "description": "Company role directory"
+    },
+    "/users/{userId}/vehicles/{vehicleId}": {
+      "schema": { "$ref": "#/entities/Vehicle" },
+      "description": "Fleet vehicle assets"
+    },
+    "/users/{userId}/drivers/{driverId}": {
+      "schema": { "$ref": "#/entities/Driver" },
+      "description": "Driver performance profiles"
+    },
+    "/users/{userId}/fuelTransactions/{txId}": {
+      "schema": { "$ref": "#/entities/FuelTransaction" },
+      "description": "Fuel transactions and odometer records"
+    },
+    "/users/{userId}/trips/{tripId}": {
+      "schema": { "$ref": "#/entities/TripRecord" },
+      "description": "GPS and route telemetry trips"
+    },
+    "/users/{userId}/maintenance/{recordId}": {
+      "schema": { "$ref": "#/entities/MaintenanceRecord" },
+      "description": "Maintenance schedules and service records"
+    },
+    "/users/{userId}/expenses/{expenseId}": {
+      "schema": { "$ref": "#/entities/ExpenseRecord" },
+      "description": "Financial expenditure records"
+    },
+    "/users/{userId}/shipments/{shipmentId}": {
+      "schema": { "$ref": "#/entities/ShipmentRecord" },
+      "description": "Logistics shipments and dispatch records"
+    },
+    "/users/{userId}/riskAlerts/{alertId}": {
+      "schema": { "$ref": "#/entities/RiskAlertRecord" },
+      "description": "Risk intelligence investigation signals"
+    },
+    "/users/{userId}/notifications/{notificationId}": {
+      "schema": { "$ref": "#/entities/NotificationRecord" },
+      "description": "Notification centre items"
+    },
+    "/users/{userId}/auditLogs/{logId}": {
+      "schema": { "$ref": "#/entities/AuditLogRecord" },
+      "description": "Immutable security and activity audit logs"
+    }
+  }
+}

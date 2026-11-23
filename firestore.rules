@@ -1,0 +1,466 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isNonEmptyStr(val, maxLen) {
+      return val is string && val.size() >= 1 && val.size() <= maxLen;
+    }
+
+    function isBoundedStr(val, maxLen) {
+      return val is string && val.size() <= maxLen;
+    }
+
+    function isValidTimestamp(ts) {
+      return ts is timestamp && ts <= request.time;
+    }
+
+    function isValidRole(role) {
+      return role in ['SUPER_ADMIN', 'FLEET_MANAGER', 'OPERATIONS_MANAGER', 'FINANCE_MANAGER', 'DATA_ANALYST', 'DRIVER', 'AUDITOR'];
+    }
+
+    function isValidFuelType(ft) {
+      return ft in ['DIESEL', 'PETROL', 'HYBRID', 'ELECTRIC'];
+    }
+
+    function isValidSeverity(sev) {
+      return sev in ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
+    }
+
+    function isValidUserProfile(data, userId) {
+      return data.userId == userId &&
+        isNonEmptyStr(data.displayName, 100) &&
+        isNonEmptyStr(data.email, 150) &&
+        isNonEmptyStr(data.activeCompanyId, 128) &&
+        isValidRole(data.activeRole) &&
+        (!('pinHash' in data) || data.pinHash == null || isBoundedStr(data.pinHash, 128)) &&
+        data.sessionTimeoutMinutes is int && data.sessionTimeoutMinutes >= 5 && data.sessionTimeoutMinutes <= 480 &&
+        data.emailAlertsEnabled is bool &&
+        data.smsAlertsEnabled is bool &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidCompany(data) {
+      return isNonEmptyStr(data.companyId, 128) &&
+        isNonEmptyStr(data.name, 120) &&
+        isNonEmptyStr(data.industry, 80) &&
+        isNonEmptyStr(data.currency, 10) &&
+        data.demoData is bool &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidTeamMember(data) {
+      return isNonEmptyStr(data.companyId, 128) &&
+        isNonEmptyStr(data.fullName, 100) &&
+        isNonEmptyStr(data.email, 150) &&
+        isValidRole(data.role) &&
+        isNonEmptyStr(data.department, 80) &&
+        data.activeStatus in ['ACTIVE', 'SUSPENDED'] &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidVehicle(data) {
+      return isNonEmptyStr(data.companyId, 128) &&
+        isNonEmptyStr(data.registrationNumber, 30) &&
+        isNonEmptyStr(data.vin, 32) &&
+        isNonEmptyStr(data.makeModel, 100) &&
+        data.category in ['HEAVY_TRUCK', 'LIGHT_VAN', 'REFRIGERATED', 'TANKER', 'FLATBED', 'UTILITY'] &&
+        isBoundedStr(data.assignedDriverId, 128) &&
+        isBoundedStr(data.assignedDriverName, 100) &&
+        isValidFuelType(data.fuelType) &&
+        data.tankCapacityLiters is number && data.tankCapacityLiters >= 0 && data.tankCapacityLiters <= 5000 &&
+        data.currentMileageKm is number && data.currentMileageKm >= 0 && data.currentMileageKm <= 10000000 &&
+        data.status in ['ACTIVE', 'INACTIVE', 'MAINTENANCE'] &&
+        isBoundedStr(data.purchaseDate, 30) &&
+        isBoundedStr(data.insuranceExpiry, 30) &&
+        isBoundedStr(data.licenseExpiry, 30) &&
+        data.baselineKmPerLiter is number && data.baselineKmPerLiter > 0 && data.baselineKmPerLiter <= 100 &&
+        data.operationalCostTotal is number && data.operationalCostTotal >= 0 && data.operationalCostTotal <= 100000000 &&
+        data.demoData is bool &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidDriver(data) {
+      return isNonEmptyStr(data.companyId, 128) &&
+        isNonEmptyStr(data.driverCode, 30) &&
+        isNonEmptyStr(data.fullName, 100) &&
+        isNonEmptyStr(data.licenseNumber, 50) &&
+        isBoundedStr(data.assignedVehicleId, 128) &&
+        isBoundedStr(data.assignedVehicleReg, 30) &&
+        data.distanceTravelledKm is number && data.distanceTravelledKm >= 0 && data.distanceTravelledKm <= 10000000 &&
+        data.fuelUsedLiters is number && data.fuelUsedLiters >= 0 && data.fuelUsedLiters <= 5000000 &&
+        data.drivingHours is number && data.drivingHours >= 0 && data.drivingHours <= 500000 &&
+        data.maintenanceIncidents is int && data.maintenanceIncidents >= 0 && data.maintenanceIncidents <= 10000 &&
+        data.safetyEvents is int && data.safetyEvents >= 0 && data.safetyEvents <= 10000 &&
+        data.onTimeDeliveryPct is number && data.onTimeDeliveryPct >= 0 && data.onTimeDeliveryPct <= 100 &&
+        data.status in ['ON_DUTY', 'OFF_DUTY', 'SUSPENDED'] &&
+        data.demoData is bool &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidFuelTransaction(data) {
+      return isNonEmptyStr(data.companyId, 128) &&
+        isNonEmptyStr(data.vehicleId, 128) &&
+        isNonEmptyStr(data.vehicleReg, 30) &&
+        isBoundedStr(data.driverId, 128) &&
+        isBoundedStr(data.driverName, 100) &&
+        isNonEmptyStr(data.routeName, 120) &&
+        data.liters is number && data.liters > 0 && data.liters <= 10000 &&
+        data.costAmount is number && data.costAmount >= 0 && data.costAmount <= 1000000 &&
+        data.odometerKm is number && data.odometerKm >= 0 && data.odometerKm <= 10000000 &&
+        data.distanceSinceLastKm is number && data.distanceSinceLastKm >= 0 && data.distanceSinceLastKm <= 100000 &&
+        isValidFuelType(data.fuelType) &&
+        isNonEmptyStr(data.stationName, 120) &&
+        isNonEmptyStr(data.transactionRef, 80) &&
+        isNonEmptyStr(data.txDateLabel, 32) &&
+        data.txTimestampMillis is int && data.txTimestampMillis >= 0 &&
+        data.demoData is bool &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidTrip(data) {
+      return isNonEmptyStr(data.companyId, 128) &&
+        isNonEmptyStr(data.vehicleId, 128) &&
+        isNonEmptyStr(data.vehicleReg, 30) &&
+        isBoundedStr(data.driverId, 128) &&
+        isBoundedStr(data.driverName, 100) &&
+        isNonEmptyStr(data.routeName, 120) &&
+        isNonEmptyStr(data.originName, 100) &&
+        isNonEmptyStr(data.destinationName, 100) &&
+        data.plannedDistanceKm is number && data.plannedDistanceKm >= 0 && data.plannedDistanceKm <= 100000 &&
+        data.actualDistanceKm is number && data.actualDistanceKm >= 0 && data.actualDistanceKm <= 100000 &&
+        data.durationMinutes is int && data.durationMinutes >= 0 && data.durationMinutes <= 100000 &&
+        data.idleMinutes is int && data.idleMinutes >= 0 && data.idleMinutes <= 100000 &&
+        data.stopCount is int && data.stopCount >= 0 && data.stopCount <= 1000 &&
+        data.routeDeviationKm is number && data.routeDeviationKm >= 0 && data.routeDeviationKm <= 50000 &&
+        data.geofenceBreached is bool &&
+        data.simulatedTelemetry is bool &&
+        data.startLat is number && data.startLat >= -90 && data.startLat <= 90 &&
+        data.startLng is number && data.startLng >= -180 && data.startLng <= 180 &&
+        data.endLat is number && data.endLat >= -90 && data.endLat <= 90 &&
+        data.endLng is number && data.endLng >= -180 && data.endLng <= 180 &&
+        data.status in ['SCHEDULED', 'IN_PROGRESS', 'COMPLETED', 'DEVIATED'] &&
+        data.startedAtMillis is int && data.startedAtMillis >= 0 &&
+        data.demoData is bool &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidMaintenance(data) {
+      return isNonEmptyStr(data.companyId, 128) &&
+        isNonEmptyStr(data.vehicleId, 128) &&
+        isNonEmptyStr(data.vehicleReg, 30) &&
+        data.maintenanceType in ['PREVENTIVE', 'CORRECTIVE', 'BREAKDOWN'] &&
+        isNonEmptyStr(data.title, 140) &&
+        isBoundedStr(data.description, 500) &&
+        isNonEmptyStr(data.serviceDate, 32) &&
+        data.mileageAtServiceKm is number && data.mileageAtServiceKm >= 0 && data.mileageAtServiceKm <= 10000000 &&
+        data.nextDueMileageKm is number && data.nextDueMileageKm >= 0 && data.nextDueMileageKm <= 10000000 &&
+        data.costAmount is number && data.costAmount >= 0 && data.costAmount <= 10000000 &&
+        isBoundedStr(data.spareParts, 300) &&
+        data.downtimeHours is number && data.downtimeHours >= 0 && data.downtimeHours <= 10000 &&
+        data.status in ['SCHEDULED', 'IN_PROGRESS', 'COMPLETED', 'OVERDUE'] &&
+        data.demoData is bool &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidExpense(data) {
+      return isNonEmptyStr(data.companyId, 128) &&
+        isBoundedStr(data.vehicleId, 128) &&
+        isBoundedStr(data.vehicleReg, 30) &&
+        isBoundedStr(data.driverId, 128) &&
+        data.category in ['FUEL', 'MAINTENANCE', 'DRIVER', 'INSURANCE', 'LICENSING', 'OPERATIONAL'] &&
+        data.amount is number && data.amount >= 0 && data.amount <= 100000000 &&
+        data.budgetAllocated is number && data.budgetAllocated >= 0 && data.budgetAllocated <= 100000000 &&
+        isNonEmptyStr(data.description, 300) &&
+        isNonEmptyStr(data.monthKey, 20) &&
+        data.demoData is bool &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidShipment(data) {
+      return isNonEmptyStr(data.companyId, 128) &&
+        isNonEmptyStr(data.trackingCode, 50) &&
+        isNonEmptyStr(data.customerName, 120) &&
+        isBoundedStr(data.customerContact, 100) &&
+        isNonEmptyStr(data.cargoDescription, 250) &&
+        data.weightKg is number && data.weightKg >= 0 && data.weightKg <= 500000 &&
+        data.capacityKg is number && data.capacityKg > 0 && data.capacityKg <= 500000 &&
+        isNonEmptyStr(data.pickupLocation, 120) &&
+        isNonEmptyStr(data.deliveryLocation, 120) &&
+        isBoundedStr(data.vehicleId, 128) &&
+        isBoundedStr(data.vehicleReg, 30) &&
+        isBoundedStr(data.driverId, 128) &&
+        isBoundedStr(data.driverName, 100) &&
+        data.revenueAmount is number && data.revenueAmount >= 0 && data.revenueAmount <= 100000000 &&
+        data.tripCostEstimate is number && data.tripCostEstimate >= 0 && data.tripCostEstimate <= 100000000 &&
+        data.status in ['REGISTERED', 'DISPATCHED', 'IN_TRANSIT', 'DELIVERED', 'DELAYED'] &&
+        isNonEmptyStr(data.scheduledDate, 32) &&
+        data.demoData is bool &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidRiskAlert(data) {
+      return isNonEmptyStr(data.companyId, 128) &&
+        isNonEmptyStr(data.category, 80) &&
+        isValidSeverity(data.severity) &&
+        data.entityType in ['VEHICLE', 'DRIVER', 'FUEL', 'ROUTE', 'FINANCE', 'LOGISTICS'] &&
+        isNonEmptyStr(data.entityId, 128) &&
+        isNonEmptyStr(data.entityLabel, 120) &&
+        isNonEmptyStr(data.supportingData, 600) &&
+        isNonEmptyStr(data.detectionMethod, 160) &&
+        isNonEmptyStr(data.historicalComparison, 400) &&
+        isNonEmptyStr(data.recommendedInvestigation, 500) &&
+        data.confidenceScore is number && data.confidenceScore >= 0 && data.confidenceScore <= 1 &&
+        data.resolutionStatus in ['OPEN', 'INVESTIGATING', 'RESOLVED', 'DISMISSED'] &&
+        isBoundedStr(data.resolutionNotes, 500) &&
+        data.demoData is bool &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidNotification(data) {
+      return isNonEmptyStr(data.companyId, 128) &&
+        isNonEmptyStr(data.title, 140) &&
+        isNonEmptyStr(data.message, 500) &&
+        isNonEmptyStr(data.category, 60) &&
+        isValidSeverity(data.severity) &&
+        data.readStatus is bool &&
+        data.channel in ['IN_APP', 'EMAIL_READY', 'SMS_READY'] &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidAuditLog(data) {
+      return isNonEmptyStr(data.companyId, 128) &&
+        isNonEmptyStr(data.actorEmail, 150) &&
+        isNonEmptyStr(data.actorRole, 50) &&
+        isNonEmptyStr(data.action, 120) &&
+        isNonEmptyStr(data.targetEntity, 120) &&
+        isNonEmptyStr(data.details, 500) &&
+        isValidTimestamp(data.createdAt);
+    }
+
+    match /users/{userId} {
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidId(userId) &&
+        incoming().keys().hasAll(['userId', 'displayName', 'email', 'activeCompanyId', 'activeRole', 'sessionTimeoutMinutes', 'emailAlertsEnabled', 'smsAlertsEnabled', 'createdAt', 'updatedAt']) &&
+        incoming().keys().hasOnly(['userId', 'displayName', 'email', 'activeCompanyId', 'activeRole', 'pinHash', 'sessionTimeoutMinutes', 'emailAlertsEnabled', 'smsAlertsEnabled', 'createdAt', 'updatedAt']) &&
+        isValidUserProfile(incoming(), userId);
+      allow update: if isOwner(userId) && isValidId(userId) &&
+        isValidUserProfile(incoming(), userId) &&
+        incoming().userId == existing().userId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'activeCompanyId', 'activeRole', 'pinHash', 'sessionTimeoutMinutes', 'emailAlertsEnabled', 'smsAlertsEnabled', 'updatedAt']);
+      allow delete: if isOwner(userId) && isValidId(userId);
+
+      match /companies/{companyId} {
+        allow get: if isOwner(userId) && isValidId(companyId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(companyId) &&
+          incoming().keys().hasAll(['companyId', 'name', 'industry', 'currency', 'demoData', 'createdAt', 'updatedAt']) &&
+          incoming().keys().hasOnly(['companyId', 'name', 'industry', 'currency', 'demoData', 'createdAt', 'updatedAt']) &&
+          isValidCompany(incoming());
+        allow update: if isOwner(userId) && isValidId(companyId) &&
+          isValidCompany(incoming()) &&
+          incoming().companyId == existing().companyId &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['name', 'industry', 'currency', 'demoData', 'updatedAt']);
+        allow delete: if isOwner(userId) && isValidId(companyId);
+      }
+
+      match /teamMembers/{memberId} {
+        allow get: if isOwner(userId) && isValidId(memberId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(memberId) &&
+          incoming().keys().hasAll(['companyId', 'fullName', 'email', 'role', 'department', 'activeStatus', 'createdAt', 'updatedAt']) &&
+          incoming().keys().hasOnly(['companyId', 'fullName', 'email', 'role', 'department', 'activeStatus', 'createdAt', 'updatedAt']) &&
+          isValidTeamMember(incoming());
+        allow update: if isOwner(userId) && isValidId(memberId) &&
+          isValidTeamMember(incoming()) &&
+          incoming().companyId == existing().companyId &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['fullName', 'email', 'role', 'department', 'activeStatus', 'updatedAt']);
+        allow delete: if isOwner(userId) && isValidId(memberId);
+      }
+
+      match /vehicles/{vehicleId} {
+        allow get: if isOwner(userId) && isValidId(vehicleId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(vehicleId) &&
+          incoming().keys().hasAll(['companyId', 'registrationNumber', 'vin', 'makeModel', 'category', 'assignedDriverId', 'assignedDriverName', 'fuelType', 'tankCapacityLiters', 'currentMileageKm', 'status', 'purchaseDate', 'insuranceExpiry', 'licenseExpiry', 'baselineKmPerLiter', 'operationalCostTotal', 'demoData', 'createdAt', 'updatedAt']) &&
+          incoming().keys().hasOnly(['companyId', 'registrationNumber', 'vin', 'makeModel', 'category', 'assignedDriverId', 'assignedDriverName', 'fuelType', 'tankCapacityLiters', 'currentMileageKm', 'status', 'purchaseDate', 'insuranceExpiry', 'licenseExpiry', 'baselineKmPerLiter', 'operationalCostTotal', 'demoData', 'createdAt', 'updatedAt']) &&
+          isValidVehicle(incoming());
+        allow update: if isOwner(userId) && isValidId(vehicleId) &&
+          isValidVehicle(incoming()) &&
+          incoming().companyId == existing().companyId &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['registrationNumber', 'vin', 'makeModel', 'category', 'assignedDriverId', 'assignedDriverName', 'fuelType', 'tankCapacityLiters', 'currentMileageKm', 'status', 'purchaseDate', 'insuranceExpiry', 'licenseExpiry', 'baselineKmPerLiter', 'operationalCostTotal', 'updatedAt']);
+        allow delete: if isOwner(userId) && isValidId(vehicleId);
+      }
+
+      match /drivers/{driverId} {
+        allow get: if isOwner(userId) && isValidId(driverId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(driverId) &&
+          incoming().keys().hasAll(['companyId', 'driverCode', 'fullName', 'licenseNumber', 'assignedVehicleId', 'assignedVehicleReg', 'distanceTravelledKm', 'fuelUsedLiters', 'drivingHours', 'maintenanceIncidents', 'safetyEvents', 'onTimeDeliveryPct', 'status', 'demoData', 'createdAt', 'updatedAt']) &&
+          incoming().keys().hasOnly(['companyId', 'driverCode', 'fullName', 'licenseNumber', 'assignedVehicleId', 'assignedVehicleReg', 'distanceTravelledKm', 'fuelUsedLiters', 'drivingHours', 'maintenanceIncidents', 'safetyEvents', 'onTimeDeliveryPct', 'status', 'demoData', 'createdAt', 'updatedAt']) &&
+          isValidDriver(incoming());
+        allow update: if isOwner(userId) && isValidId(driverId) &&
+          isValidDriver(incoming()) &&
+          incoming().companyId == existing().companyId &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['driverCode', 'fullName', 'licenseNumber', 'assignedVehicleId', 'assignedVehicleReg', 'distanceTravelledKm', 'fuelUsedLiters', 'drivingHours', 'maintenanceIncidents', 'safetyEvents', 'onTimeDeliveryPct', 'status', 'updatedAt']);
+        allow delete: if isOwner(userId) && isValidId(driverId);
+      }
+
+      match /fuelTransactions/{txId} {
+        allow get: if isOwner(userId) && isValidId(txId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(txId) &&
+          incoming().keys().hasAll(['companyId', 'vehicleId', 'vehicleReg', 'driverId', 'driverName', 'routeName', 'liters', 'costAmount', 'odometerKm', 'distanceSinceLastKm', 'fuelType', 'stationName', 'transactionRef', 'txDateLabel', 'txTimestampMillis', 'demoData', 'createdAt', 'updatedAt']) &&
+          incoming().keys().hasOnly(['companyId', 'vehicleId', 'vehicleReg', 'driverId', 'driverName', 'routeName', 'liters', 'costAmount', 'odometerKm', 'distanceSinceLastKm', 'fuelType', 'stationName', 'transactionRef', 'txDateLabel', 'txTimestampMillis', 'demoData', 'createdAt', 'updatedAt']) &&
+          isValidFuelTransaction(incoming());
+        allow update: if isOwner(userId) && isValidId(txId) &&
+          isValidFuelTransaction(incoming()) &&
+          incoming().companyId == existing().companyId &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['routeName', 'liters', 'costAmount', 'odometerKm', 'distanceSinceLastKm', 'stationName', 'updatedAt']);
+        allow delete: if isOwner(userId) && isValidId(txId);
+      }
+
+      match /trips/{tripId} {
+        allow get: if isOwner(userId) && isValidId(tripId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(tripId) &&
+          incoming().keys().hasAll(['companyId', 'vehicleId', 'vehicleReg', 'driverId', 'driverName', 'routeName', 'originName', 'destinationName', 'plannedDistanceKm', 'actualDistanceKm', 'durationMinutes', 'idleMinutes', 'stopCount', 'routeDeviationKm', 'geofenceBreached', 'simulatedTelemetry', 'startLat', 'startLng', 'endLat', 'endLng', 'status', 'startedAtMillis', 'demoData', 'createdAt', 'updatedAt']) &&
+          incoming().keys().hasOnly(['companyId', 'vehicleId', 'vehicleReg', 'driverId', 'driverName', 'routeName', 'originName', 'destinationName', 'plannedDistanceKm', 'actualDistanceKm', 'durationMinutes', 'idleMinutes', 'stopCount', 'routeDeviationKm', 'geofenceBreached', 'simulatedTelemetry', 'startLat', 'startLng', 'endLat', 'endLng', 'status', 'startedAtMillis', 'demoData', 'createdAt', 'updatedAt']) &&
+          isValidTrip(incoming());
+        allow update: if isOwner(userId) && isValidId(tripId) &&
+          isValidTrip(incoming()) &&
+          incoming().companyId == existing().companyId &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['actualDistanceKm', 'durationMinutes', 'idleMinutes', 'stopCount', 'routeDeviationKm', 'geofenceBreached', 'status', 'updatedAt']);
+        allow delete: if isOwner(userId) && isValidId(tripId);
+      }
+
+      match /maintenance/{recordId} {
+        allow get: if isOwner(userId) && isValidId(recordId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(recordId) &&
+          incoming().keys().hasAll(['companyId', 'vehicleId', 'vehicleReg', 'maintenanceType', 'title', 'description', 'serviceDate', 'mileageAtServiceKm', 'nextDueMileageKm', 'costAmount', 'spareParts', 'downtimeHours', 'status', 'demoData', 'createdAt', 'updatedAt']) &&
+          incoming().keys().hasOnly(['companyId', 'vehicleId', 'vehicleReg', 'maintenanceType', 'title', 'description', 'serviceDate', 'mileageAtServiceKm', 'nextDueMileageKm', 'costAmount', 'spareParts', 'downtimeHours', 'status', 'demoData', 'createdAt', 'updatedAt']) &&
+          isValidMaintenance(incoming());
+        allow update: if isOwner(userId) && isValidId(recordId) &&
+          isValidMaintenance(incoming()) &&
+          incoming().companyId == existing().companyId &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'costAmount', 'downtimeHours', 'spareParts', 'description', 'nextDueMileageKm', 'updatedAt']);
+        allow delete: if isOwner(userId) && isValidId(recordId);
+      }
+
+      match /expenses/{expenseId} {
+        allow get: if isOwner(userId) && isValidId(expenseId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(expenseId) &&
+          incoming().keys().hasAll(['companyId', 'vehicleId', 'vehicleReg', 'driverId', 'category', 'amount', 'budgetAllocated', 'description', 'monthKey', 'demoData', 'createdAt', 'updatedAt']) &&
+          incoming().keys().hasOnly(['companyId', 'vehicleId', 'vehicleReg', 'driverId', 'category', 'amount', 'budgetAllocated', 'description', 'monthKey', 'demoData', 'createdAt', 'updatedAt']) &&
+          isValidExpense(incoming());
+        allow update: if isOwner(userId) && isValidId(expenseId) &&
+          isValidExpense(incoming()) &&
+          incoming().companyId == existing().companyId &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['amount', 'budgetAllocated', 'description', 'updatedAt']);
+        allow delete: if isOwner(userId) && isValidId(expenseId);
+      }
+
+      match /shipments/{shipmentId} {
+        allow get: if isOwner(userId) && isValidId(shipmentId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(shipmentId) &&
+          incoming().keys().hasAll(['companyId', 'trackingCode', 'customerName', 'customerContact', 'cargoDescription', 'weightKg', 'capacityKg', 'pickupLocation', 'deliveryLocation', 'vehicleId', 'vehicleReg', 'driverId', 'driverName', 'revenueAmount', 'tripCostEstimate', 'status', 'scheduledDate', 'demoData', 'createdAt', 'updatedAt']) &&
+          incoming().keys().hasOnly(['companyId', 'trackingCode', 'customerName', 'customerContact', 'cargoDescription', 'weightKg', 'capacityKg', 'pickupLocation', 'deliveryLocation', 'vehicleId', 'vehicleReg', 'driverId', 'driverName', 'revenueAmount', 'tripCostEstimate', 'status', 'scheduledDate', 'demoData', 'createdAt', 'updatedAt']) &&
+          isValidShipment(incoming());
+        allow update: if isOwner(userId) && isValidId(shipmentId) &&
+          isValidShipment(incoming()) &&
+          incoming().companyId == existing().companyId &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['vehicleId', 'vehicleReg', 'driverId', 'driverName', 'status', 'scheduledDate', 'updatedAt']);
+        allow delete: if isOwner(userId) && isValidId(shipmentId);
+      }
+
+      match /riskAlerts/{alertId} {
+        allow get: if isOwner(userId) && isValidId(alertId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(alertId) &&
+          incoming().keys().hasAll(['companyId', 'category', 'severity', 'entityType', 'entityId', 'entityLabel', 'supportingData', 'detectionMethod', 'historicalComparison', 'recommendedInvestigation', 'confidenceScore', 'resolutionStatus', 'resolutionNotes', 'demoData', 'createdAt', 'updatedAt']) &&
+          incoming().keys().hasOnly(['companyId', 'category', 'severity', 'entityType', 'entityId', 'entityLabel', 'supportingData', 'detectionMethod', 'historicalComparison', 'recommendedInvestigation', 'confidenceScore', 'resolutionStatus', 'resolutionNotes', 'demoData', 'createdAt', 'updatedAt']) &&
+          isValidRiskAlert(incoming());
+        allow update: if isOwner(userId) && isValidId(alertId) &&
+          isValidRiskAlert(incoming()) &&
+          incoming().companyId == existing().companyId &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['resolutionStatus', 'resolutionNotes', 'updatedAt']);
+        allow delete: if isOwner(userId) && isValidId(alertId);
+      }
+
+      match /notifications/{notificationId} {
+        allow get: if isOwner(userId) && isValidId(notificationId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(notificationId) &&
+          incoming().keys().hasAll(['companyId', 'title', 'message', 'category', 'severity', 'readStatus', 'channel', 'createdAt', 'updatedAt']) &&
+          incoming().keys().hasOnly(['companyId', 'title', 'message', 'category', 'severity', 'readStatus', 'channel', 'createdAt', 'updatedAt']) &&
+          isValidNotification(incoming());
+        allow update: if isOwner(userId) && isValidId(notificationId) &&
+          isValidNotification(incoming()) &&
+          incoming().companyId == existing().companyId &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['readStatus', 'updatedAt']);
+        allow delete: if isOwner(userId) && isValidId(notificationId);
+      }
+
+      match /auditLogs/{logId} {
+        allow get: if isOwner(userId) && isValidId(logId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(logId) &&
+          incoming().keys().hasAll(['companyId', 'actorEmail', 'actorRole', 'action', 'targetEntity', 'details', 'createdAt']) &&
+          incoming().keys().hasOnly(['companyId', 'actorEmail', 'actorRole', 'action', 'targetEntity', 'details', 'createdAt']) &&
+          isValidAuditLog(incoming());
+        allow update, delete: if false;
+      }
+    }
+  }
+}
